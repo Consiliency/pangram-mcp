@@ -13,6 +13,7 @@ API = server.DEFAULT_API_BASE
 
 SAMPLE = {
     "text": "echoed back input",
+    "version": "3.3.2",
     "prediction": "Likely AI-generated",
     "prediction_short": "AI",
     "headline": "This text is likely AI-generated.",
@@ -90,6 +91,7 @@ async def test_analyze_happy_path(monkeypatch):
     result = await analyze(text="Some text to classify.")
     assert isinstance(result, AnalyzeResult)
     assert result.prediction == "Likely AI-generated"
+    assert result.version == "3.3.2"
     assert result.fraction_ai == pytest.approx(0.92)
     assert len(result.windows) == 1
     assert result.windows[0].confidence == "High"

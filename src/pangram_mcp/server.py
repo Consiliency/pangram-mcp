@@ -56,6 +56,9 @@ class AnalyzeResult(BaseModel):
         default=None, description="Short form of the verdict."
     )
     headline: str | None = Field(default=None, description="One-line human summary.")
+    version: str | None = Field(
+        default=None, description="Pangram model version that produced this result."
+    )
     fraction_ai: float = Field(
         description="Fraction of the text classified as AI-generated (0.0-1.0)."
     )
@@ -199,6 +202,7 @@ async def analyze(
         prediction=str(data.get("prediction", "unknown")),
         prediction_short=data.get("prediction_short"),
         headline=data.get("headline"),
+        version=data.get("version"),
         fraction_ai=float(data.get("fraction_ai", 0.0)),
         fraction_ai_assisted=float(data.get("fraction_ai_assisted", 0.0)),
         fraction_human=float(data.get("fraction_human", 0.0)),
