@@ -42,13 +42,16 @@ uvx pangram-mcp
 
 ## Tool: `analyze`
 
-Detect AI-generated text. Provide **either** `text` **or** `file`.
+Detect AI-generated text.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `text` | string | Raw text to classify. |
-| `file` | string | Path to a local UTF-8 text file to read and classify. |
-| `public_dashboard_link` | bool | Request a shareable Pangram dashboard link (default `false`). |
+| `text` | string | Text to classify (required). |
+| `public_dashboard_link` | bool | Request a **public** shareable Pangram dashboard link (default `false`; only for non-sensitive text). |
+
+> The tool takes inline text only — not a file path. Reading files server-side would
+> let a caller exfiltrate any file the process can read, bypassing the harness's
+> permission-gated file tools. Read files with your own tools and pass the text.
 
 Returns structured output: `prediction`, `prediction_short`, `headline`,
 `fraction_ai` / `fraction_ai_assisted` / `fraction_human` (0.0–1.0),

@@ -36,12 +36,16 @@ mcp = FastMCP("pangram")
 class Window(BaseModel):
     """A per-segment classification returned by Pangram."""
 
-    text: str = Field(description="The segment of the input this window covers.")
-    label: str = Field(description="Human-readable segment label, e.g. 'AI' / 'Human'.")
+    # Fields are defaulted so a single renamed/absent field on one window degrades
+    # that window gracefully rather than failing the whole classification.
+    text: str = Field(default="", description="The segment of the input this window covers.")
+    label: str = Field(default="", description="Segment label, e.g. 'AI' / 'Human'.")
     ai_assistance_score: float = Field(
-        description="AI-assistance score for this segment (0.0-1.0)."
+        default=0.0, description="AI-assistance score for this segment (0.0-1.0)."
     )
-    confidence: str = Field(description="Confidence bucket, e.g. 'High'/'Medium'/'Low'.")
+    confidence: str = Field(
+        default="", description="Confidence bucket, e.g. 'High'/'Medium'/'Low'."
+    )
     start_index: int | None = None
     end_index: int | None = None
     word_count: int | None = None
@@ -79,27 +83,17 @@ class AnalyzeResult(BaseModel):
     )
 
 
-def _resolve_input(text: str | None, file: str | None) -> str:
-    """Return the text to classify from exactly one of ``text`` or ``file``."""
-    provided = [x for x in (text, file) if x]
-    if len(provided) != 1:
-        raise ValueError(
-            "Provide exactly one of `text` or `file` (got "
-            f"{'both' if len(provided) == 2 else 'neither'})."
-        )
-    if file:
-        try:
-            with open(file, encoding="utf-8") as fh:
-                content = fh.read()
-        except FileNotFoundError:
-            raise ValueError(f"File not found: {file}") from None
-        except OSError as exc:
-            raise ValueError(f"Could not read {file}: {exc}") from None
-    else:
-        content = text or ""
-    content = content.strip()
+def _resolve_text(text: str | None) -> str:
+    """Validate and normalize the text to classify.
+
+    The tool intentionally accepts only inline text (not a file path): reading a
+    file here would let a caller exfiltrate any file the server process can read,
+    bypassing the harness's permission-gated file tools. Callers read files with
+    their own tools and pass the text.
+    """
+    content = (text or "").strip()
     if not content:
-        raise ValueError("The text to analyze is empty.")
+        raise ValueError("`text` is required and must not be empty.")
     if len(content) > MAX_CHARS:
         raise ValueError(
             f"Input is {len(content)} chars; the limit is {MAX_CHARS}. "
@@ -135,19 +129,15 @@ def _explain_http_error(status: int, body: str) -> str:
 )
 async def analyze(
     text: Annotated[
-        str | None,
-        Field(description="Raw text to classify. Provide this OR `file`, not both."),
-    ] = None,
-    file: Annotated[
-        str | None,
-        Field(
-            description="Path to a local UTF-8 text file to read and classify. "
-            "Provide this OR `text`, not both."
-        ),
-    ] = None,
+        str,
+        Field(description="Text to classify (read files with your own tools first)."),
+    ],
     public_dashboard_link: Annotated[
         bool,
-        Field(description="Request a shareable Pangram dashboard link for the result."),
+        Field(
+            description="Request a PUBLIC shareable Pangram dashboard link for the "
+            "result. Off by default; only enable for non-sensitive text."
+        ),
     ] = False,
 ) -> AnalyzeResult:
     """Detect AI-generated text with Pangram Labs.
@@ -155,11 +145,11 @@ async def analyze(
     Classifies the input as human-written, AI-generated, or AI-assisted and returns an
     overall verdict (`prediction`), per-class fractions 0.0-1.0
     (`fraction_ai` / `fraction_ai_assisted` / `fraction_human`), segment counts, and a
-    per-segment breakdown (`windows`). Provide either `text` or `file`.
+    per-segment breakdown (`windows`).
 
     Requires the PANGRAM_API_KEY environment variable.
     """
-    content = _resolve_input(text, file)
+    content = _resolve_text(text)
 
     api_key = os.environ.get(API_KEY_ENV)
     if not api_key:
@@ -203,9 +193,9 @@ async def analyze(
         prediction_short=data.get("prediction_short"),
         headline=data.get("headline"),
         version=data.get("version"),
-        fraction_ai=float(data.get("fraction_ai", 0.0)),
-        fraction_ai_assisted=float(data.get("fraction_ai_assisted", 0.0)),
-        fraction_human=float(data.get("fraction_human", 0.0)),
+        fraction_ai=float(data.get("fraction_ai") or 0.0),
+        fraction_ai_assisted=float(data.get("fraction_ai_assisted") or 0.0),
+        fraction_human=float(data.get("fraction_human") or 0.0),
         num_ai_segments=data.get("num_ai_segments"),
         num_ai_assisted_segments=data.get("num_ai_assisted_segments"),
         num_human_segments=data.get("num_human_segments"),

@@ -7,7 +7,7 @@ import pytest
 import respx
 
 from pangram_mcp import server
-from pangram_mcp.server import AnalyzeResult, _explain_http_error, _resolve_input, analyze
+from pangram_mcp.server import AnalyzeResult, _explain_http_error, _resolve_text, analyze
 
 API = server.DEFAULT_API_BASE
 
@@ -41,35 +41,25 @@ SAMPLE = {
 # --- input resolution -------------------------------------------------------
 
 def test_resolve_text():
-    assert _resolve_input("  hello  ", None) == "hello"
-
-
-def test_resolve_file(tmp_path):
-    p = tmp_path / "doc.txt"
-    p.write_text("from a file")
-    assert _resolve_input(None, str(p)) == "from a file"
-
-
-def test_resolve_requires_exactly_one():
-    with pytest.raises(ValueError, match="exactly one"):
-        _resolve_input("a", "b")
-    with pytest.raises(ValueError, match="exactly one"):
-        _resolve_input(None, None)
+    assert _resolve_text("  hello  ") == "hello"
 
 
 def test_resolve_empty_text():
-    with pytest.raises(ValueError, match="empty"):
-        _resolve_input("   ", None)
-
-
-def test_resolve_missing_file():
-    with pytest.raises(ValueError, match="File not found"):
-        _resolve_input(None, "/no/such/file.txt")
+    with pytest.raises(ValueError, match="required"):
+        _resolve_text("   ")
+    with pytest.raises(ValueError, match="required"):
+        _resolve_text(None)
 
 
 def test_resolve_too_long():
     with pytest.raises(ValueError, match="limit"):
-        _resolve_input("x" * (server.MAX_CHARS + 1), None)
+        _resolve_text("x" * (server.MAX_CHARS + 1))
+
+
+def test_window_tolerates_missing_fields():
+    # A window missing fields degrades gracefully instead of failing the call.
+    w = server.Window(**{"label": "AI"})
+    assert w.label == "AI" and w.ai_assistance_score == 0.0 and w.text == ""
 
 
 # --- error mapping ----------------------------------------------------------
@@ -113,3 +103,15 @@ async def test_analyze_http_error(monkeypatch):
     respx.post(API).mock(return_value=httpx.Response(402, text="no credits"))
     with pytest.raises(ValueError, match="402"):
         await analyze(text="hello")
+
+
+@respx.mock
+async def test_analyze_tolerates_null_fields(monkeypatch):
+    # Schema drift: null fractions / missing windows must not crash the tool.
+    monkeypatch.setenv("PANGRAM_API_KEY", "test-key")
+    respx.post(API).mock(
+        return_value=httpx.Response(200, json={"prediction": "x", "fraction_ai": None})
+    )
+    result = await analyze(text="hello")
+    assert result.fraction_ai == 0.0
+    assert result.windows == []
