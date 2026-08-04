@@ -58,7 +58,7 @@ def test_resolve_too_long():
 
 def test_window_tolerates_missing_fields():
     # A window missing fields degrades gracefully instead of failing the call.
-    w = server.Window(**{"label": "AI"})
+    w = server.Window(label="AI")
     assert w.label == "AI" and w.ai_assistance_score == 0.0 and w.text == ""
 
 
