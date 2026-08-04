@@ -115,3 +115,14 @@ async def test_analyze_tolerates_null_fields(monkeypatch):
     result = await analyze(text="hello")
     assert result.fraction_ai == 0.0
     assert result.windows == []
+
+
+def test_dunder_version_matches_package_metadata():
+    # 0.1.2 shipped with __version__ still reading 0.1.1: the release bumped
+    # pyproject.toml but not __init__.py, and nothing checked. Anything reading
+    # pangram_mcp.__version__ reported the wrong release.
+    import importlib.metadata as md
+
+    import pangram_mcp
+
+    assert pangram_mcp.__version__ == md.version("pangram-mcp")

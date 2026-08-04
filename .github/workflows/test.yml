@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # 0.1.1 broke with ZERO commits to this repo: mcp 2.0.0 was published six days
+  # after our last CI run, and nothing re-ran to notice. Push/PR triggers alone
+  # cannot catch a dependency that moves underneath a released package, so run
+  # weekly to surface it against a released artifact rather than a user's install.
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
 
 jobs:
   test:
@@ -54,3 +61,39 @@ jobs:
           # NOT a bare `import pangram_mcp` — that succeeds even when the server
           # module is broken. server.py holds the FastMCP import that breaks.
           /tmp/fresh/bin/python -c "import pangram_mcp.server"
+
+  # install-smoke resolves the NEWEST allowed mcp, so it can only ever validate
+  # the upper bound. The declared minimum went untested and was wrong: 0.1.2
+  # shipped `mcp>=1.2.0` while the server actually needs 1.14.0. This job pins
+  # the floor and proves the constraint's other end is honest.
+  min-version-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve the declared minimum mcp from pyproject
+        id: floor
+        run: |
+          FLOOR=$(python3 -c "
+          import re, pathlib
+          t = pathlib.Path('pyproject.toml').read_text()
+          m = re.search(r'\"mcp>=([0-9.]+),<', t)
+          assert m, 'could not parse the mcp lower bound'
+          print(m.group(1))
+          ")
+          echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
+          echo "declared mcp floor: $FLOOR"
+
+      - name: Install at the floor and import the server
+        env:
+          FLOOR: ${{ steps.floor.outputs.floor }}
+        run: |
+          uv build --wheel --out-dir dist
+          uv venv /tmp/floor
+          VIRTUAL_ENV=/tmp/floor uv pip install dist/*.whl "mcp==${FLOOR}"
+          VIRTUAL_ENV=/tmp/floor uv pip list
+          /tmp/floor/bin/python -c "import pangram_mcp.server"

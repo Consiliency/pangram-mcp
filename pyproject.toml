@@ -1,6 +1,6 @@
 [project]
 name = "pangram-mcp"
-version = "0.1.2"
+version = "0.1.3"
 description = "MCP server for Pangram Labs AI-generated-text detection"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,12 +13,20 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    # Upper bound is load-bearing: mcp 2.0.0 REMOVED mcp.server.fastmcp (it is
-    # not a rename — 2.x replaces it with a different mcpserver API), and
-    # server.py imports FastMCP from it at module scope. Without the cap a fresh
-    # `uvx pangram-mcp` resolves to 2.x and the server dies before starting.
-    # Raising this requires porting server.py off FastMCP.
-    "mcp>=1.2.0,<2.0.0",
+    # BOTH bounds are load-bearing; both were verified by installing each version
+    # and importing pangram_mcp.server.
+    #
+    # Upper: mcp 2.0.0 REMOVED mcp.server.fastmcp (not a rename — 2.x exposes a
+    # different mcpserver API) and server.py imports FastMCP at module scope.
+    # Raising it requires porting server.py off FastMCP.
+    #
+    # Lower: 1.14.0 is the oldest release this server actually runs on. Below it
+    # there are two distinct failures — <1.7.0 lacks mcp.types.ToolAnnotations,
+    # and 1.7.0–1.13.1 raise TypeError inside FastMCP's own tool registration
+    # (Tool.from_function -> issubclass(param.annotation, Context)). Do not lower
+    # this to "when ToolAnnotations first appeared"; that is 1.7.0 and it is
+    # still broken.
+    "mcp>=1.14.0,<2.0.0",
     "httpx>=0.27",
 ]
 
