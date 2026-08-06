@@ -1,6 +1,6 @@
 [project]
 name = "pangram-mcp"
-version = "0.1.3"
+version = "0.1.4"
 description = "MCP server for Pangram Labs AI-generated-text detection"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,20 +13,22 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    # BOTH bounds are load-bearing; both were verified by installing each version
-    # and importing pangram_mcp.server.
+    # BOTH bounds are load-bearing; both were established by installing each
+    # boundary version and importing pangram_mcp.server, not by reading source.
     #
-    # Upper: mcp 2.0.0 REMOVED mcp.server.fastmcp (not a rename — 2.x exposes a
-    # different mcpserver API) and server.py imports FastMCP at module scope.
-    # Raising it requires porting server.py off FastMCP.
+    # Lower: 2.0.0 is the oldest release exposing mcp.server.MCPServer, which
+    # server.py now imports. mcp.server.fastmcp.FastMCP (the pre-2.0 API this
+    # server used through 0.1.3) was REMOVED in 2.0.0 — not renamed — so no 1.x
+    # release satisfies this floor; installing mcp==1.29.0 (the last 1.x) and
+    # importing mcp.server.MCPServer raises ImportError.
     #
-    # Lower: 1.14.0 is the oldest release this server actually runs on. Below it
-    # there are two distinct failures — <1.7.0 lacks mcp.types.ToolAnnotations,
-    # and 1.7.0–1.13.1 raise TypeError inside FastMCP's own tool registration
-    # (Tool.from_function -> issubclass(param.annotation, Context)). Do not lower
-    # this to "when ToolAnnotations first appeared"; that is 1.7.0 and it is
-    # still broken.
-    "mcp>=1.14.0,<2.0.0",
+    # Upper: only mcp 2.0.0 is a stable release on PyPI today (the rest of the
+    # 2.x line is 2.0.0a1..2.0.0rc1, prereleases uv excludes by default), so the
+    # ceiling is a real (if currently degenerate) boundary rather than a guess —
+    # it becomes load-bearing the moment 2.1 ships.
+    "mcp>=2.0.0,<3.0.0",
+    # mcp 2.x depends on httpx2, not httpx, and server.py does `import httpx`
+    # directly — this explicit declaration is what keeps httpx installed at all.
     "httpx>=0.27",
 ]
 
@@ -39,7 +41,16 @@ Issues = "https://github.com/Consiliency/pangram-mcp/issues"
 pangram-mcp = "pangram_mcp.server:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.6", "mypy>=1.11"]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    # tests/test_packaging.py parses pyproject.toml; tomllib is stdlib only on
+    # 3.11+, and requires-python allows 3.10, which CI exercises.
+    "tomli>=2.0; python_version < '3.11'",
+]
 
 [build-system]
 requires = ["hatchling"]

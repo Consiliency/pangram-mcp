@@ -1,0 +1,241 @@
+{
+  "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": true,
+    "title": "Detect AI-generated text"
+  },
+  "description": "Detect AI-generated text with Pangram Labs.\n\n    Classifies the input as human-written, AI-generated, or AI-assisted and returns an\n    overall verdict (`prediction`), per-class fractions 0.0-1.0\n    (`fraction_ai` / `fraction_ai_assisted` / `fraction_human`), segment counts, and a\n    per-segment breakdown (`windows`).\n\n    Requires the PANGRAM_API_KEY environment variable.\n    ",
+  "inputSchema": {
+    "properties": {
+      "public_dashboard_link": {
+        "default": false,
+        "description": "Request a PUBLIC shareable Pangram dashboard link for the result. Off by default; only enable for non-sensitive text.",
+        "title": "Public Dashboard Link",
+        "type": "boolean"
+      },
+      "text": {
+        "description": "Text to classify (read files with your own tools first).",
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "title": "analyzeArguments",
+    "type": "object"
+  },
+  "name": "analyze",
+  "outputSchema": {
+    "$defs": {
+      "Window": {
+        "description": "A per-segment classification returned by Pangram.",
+        "properties": {
+          "ai_assistance_score": {
+            "default": 0.0,
+            "description": "AI-assistance score for this segment (0.0-1.0).",
+            "title": "Ai Assistance Score",
+            "type": "number"
+          },
+          "confidence": {
+            "default": "",
+            "description": "Confidence bucket, e.g. 'High'/'Medium'/'Low'.",
+            "title": "Confidence",
+            "type": "string"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End Index"
+          },
+          "label": {
+            "default": "",
+            "description": "Segment label, e.g. 'AI' / 'Human'.",
+            "title": "Label",
+            "type": "string"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start Index"
+          },
+          "text": {
+            "default": "",
+            "description": "The segment of the input this window covers.",
+            "title": "Text",
+            "type": "string"
+          },
+          "token_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Token Length"
+          },
+          "word_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Word Count"
+          }
+        },
+        "title": "Window",
+        "type": "object"
+      }
+    },
+    "description": "Structured result of a Pangram AI-detection call.",
+    "properties": {
+      "dashboard_link": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Shareable dashboard URL (only if requested).",
+        "title": "Dashboard Link"
+      },
+      "fraction_ai": {
+        "description": "Fraction of the text classified as AI-generated (0.0-1.0).",
+        "title": "Fraction Ai",
+        "type": "number"
+      },
+      "fraction_ai_assisted": {
+        "description": "Fraction classified as AI-assisted (0.0-1.0).",
+        "title": "Fraction Ai Assisted",
+        "type": "number"
+      },
+      "fraction_human": {
+        "description": "Fraction classified as human-written (0.0-1.0).",
+        "title": "Fraction Human",
+        "type": "number"
+      },
+      "headline": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "One-line human summary.",
+        "title": "Headline"
+      },
+      "num_ai_assisted_segments": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Num Ai Assisted Segments"
+      },
+      "num_ai_segments": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Num Ai Segments"
+      },
+      "num_human_segments": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Num Human Segments"
+      },
+      "prediction": {
+        "description": "Overall verdict for the whole text.",
+        "title": "Prediction",
+        "type": "string"
+      },
+      "prediction_short": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Short form of the verdict.",
+        "title": "Prediction Short"
+      },
+      "version": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Pangram model version that produced this result.",
+        "title": "Version"
+      },
+      "windows": {
+        "description": "Per-segment breakdown.",
+        "items": {
+          "$ref": "#/$defs/Window"
+        },
+        "title": "Windows",
+        "type": "array"
+      }
+    },
+    "required": [
+      "prediction",
+      "fraction_ai",
+      "fraction_ai_assisted",
+      "fraction_human"
+    ],
+    "title": "AnalyzeResult",
+    "type": "object"
+  }
+}
