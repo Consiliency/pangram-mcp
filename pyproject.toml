@@ -41,7 +41,16 @@ Issues = "https://github.com/Consiliency/pangram-mcp/issues"
 pangram-mcp = "pangram_mcp.server:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.6", "mypy>=1.11"]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    # tests/test_packaging.py parses pyproject.toml; tomllib is stdlib only on
+    # 3.11+, and requires-python allows 3.10, which CI exercises.
+    "tomli>=2.0; python_version < '3.11'",
+]
 
 [build-system]
 requires = ["hatchling"]

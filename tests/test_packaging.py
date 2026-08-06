@@ -12,7 +12,10 @@ import pathlib
 import re
 from importlib import metadata
 
-import tomllib
+try:  # tomllib is stdlib on 3.11+; 3.10 (this package's floor) needs the tomli backport
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - only taken on Python 3.10
+    import tomli as tomllib  # type: ignore[no-redef]
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
