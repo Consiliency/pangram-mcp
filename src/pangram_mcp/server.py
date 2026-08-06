@@ -20,9 +20,11 @@ import os
 from typing import Annotated, Any
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field
+
+from pangram_mcp import __version__
 
 DEFAULT_API_BASE = "https://text.api.pangram.com/v3"
 API_KEY_ENV = "PANGRAM_API_KEY"
@@ -30,7 +32,7 @@ API_KEY_ENV = "PANGRAM_API_KEY"
 # very long inputs waste credits. Callers should chunk larger documents themselves.
 MAX_CHARS = 100_000
 
-mcp = FastMCP("pangram")
+mcp = MCPServer("pangram", version=__version__)
 
 
 class Window(BaseModel):
@@ -121,10 +123,10 @@ def _explain_http_error(status: int, body: str) -> str:
 @mcp.tool(
     annotations=ToolAnnotations(
         title="Detect AI-generated text",
-        readOnlyHint=True,
-        destructiveHint=False,
-        idempotentHint=True,
-        openWorldHint=True,
+        read_only_hint=True,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=True,
     )
 )
 async def analyze(

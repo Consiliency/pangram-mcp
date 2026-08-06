@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
+import pathlib
+
 import httpx
 import pytest
 import respx
 
-from pangram_mcp import server
+from pangram_mcp import __version__, server
 from pangram_mcp.server import AnalyzeResult, _explain_http_error, _resolve_text, analyze
 
 API = server.DEFAULT_API_BASE
+GOLDEN_ANALYZE_TOOL = pathlib.Path(__file__).parent / "golden" / "analyze_tool.json"
 
 SAMPLE = {
     "text": "echoed back input",
@@ -126,3 +130,40 @@ def test_dunder_version_matches_package_metadata():
     import pangram_mcp
 
     assert pangram_mcp.__version__ == md.version("pangram-mcp")
+
+
+# --- mcp 2.x port (SL-1) ------------------------------------------------------
+
+def test_server_is_mcpserver_instance():
+    assert type(server.mcp).__name__ == "MCPServer"
+
+
+def test_server_reports_package_version():
+    assert server.mcp.version == __version__
+
+
+async def test_analyze_tool_descriptor_matches_golden_baseline():
+    # Captured from the unported server on mcp==1.29.0 (0.1.3). The port must
+    # not change the wire-visible tool contract: name, description, inputSchema
+    # (including the "analyzeArguments" title), outputSchema (including $defs),
+    # and annotations (serialized camelCase) all stay byte-identical.
+    golden = json.loads(GOLDEN_ANALYZE_TOOL.read_text())
+
+    tools = await server.mcp.list_tools()
+    assert len(tools) == 1
+    dumped = tools[0].model_dump(mode="json", by_alias=True, exclude_none=True)
+
+    assert dumped == golden
+
+
+async def test_analyze_tool_annotations_are_camelcase_on_the_wire():
+    tools = await server.mcp.list_tools()
+    dumped = tools[0].model_dump(mode="json", by_alias=True, exclude_none=True)
+    annotations = dumped["annotations"]
+    assert set(annotations) == {
+        "title",
+        "readOnlyHint",
+        "destructiveHint",
+        "idempotentHint",
+        "openWorldHint",
+    }
